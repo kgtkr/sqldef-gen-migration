@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+
+set -eu
+
+usage() {
+    echo "Usage: [options...] -- [sqldef-options]"
+    echo
+    echo "Options:"
+    echo -e "  -c, --cmd sqldef-command\tSqldef command name (Example: sqlite3def)"
+    echo -e "  -o, --output-dir outdir\tMigration file output directory (Example: ./migrations/init-1644229171838)"
+    echo -e "  -f, --file schema_file\tSQL schema file (Example: ./Schema.sql)"
+    echo -e "  -h, --help"
+    echo
+    echo "sqldef-options cannot have --dry-run, --file, --skip-drop, etc."
+    echo "It should only be used in a development environment and the migration file should be committed."
+}
+
+for OPT in "$@"
+do
+    case $1 in
+        -h | --help)
+            usage
+            exit 0
+            ;;
+        -c)
+            SQLDEF_COMMAND=$2
+            shift
+            ;;
+        -o)
+            OUTDIR=$2
+            shift
+            ;;
+        -f)
+            SCHEMA_FILE=$2
+            shift
+            ;;
+        --)
+            shift
+            SQLDEF_OPTIONS="$@"
+            break
+            ;;
+        *)
+            echo "Unknown option: $OPT"
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+
+if [ -z "${SQLDEF_COMMAND:-}" ]; then
+    echo "Missing -c option"
+    usage
+    exit 1
+fi
+
+if [ -z "${OUTDIR:-}" ]; then
+    echo "Missing -o option"
+    usage
+    exit 1
+fi
+
+if [ -z "${SCHEMA_FILE:-}" ]; then
+    echo "Missing -f option"
+    usage
+    exit 1
+fi
+
+SQLDEF_OPTIONS=${SQLDEF_OPTIONS:-}
+CURRENT_SCHEMA_FILE=$(mktemp)
+SED_PAT="s/^Run: '(.*)'$/\\1/"
+
+mkdir -p $OUTDIR
+
+$SQLDEF_COMMAND $SQLDEF_OPTIONS --export > $CURRENT_SCHEMA_FILE
+$SQLDEF_COMMAND $SQLDEF_OPTIONS --file=$SCHEMA_FILE | tail -n +2 | sed -r "$SED_PAT" > $OUTDIR/up.sql
+$SQLDEF_COMMAND $SQLDEF_OPTIONS --dry-run  --file=$CURRENT_SCHEMA_FILE | tail -n +2 | sed -r "$SED_PAT" > $OUTDIR/down.sql
