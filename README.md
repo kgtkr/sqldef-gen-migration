@@ -17,6 +17,7 @@ Options:
   -c, --cmd sqldef-command      Sqldef command name (Example: sqlite3def)
   -o, --output-dir outdir       Migration file output directory (Example: ./migrations/init-1644229171838)
   -f, --file schema_file        SQL schema file (Example: ./Schema.sql)
+  --dry-run             Dry run. Generate up.sql only
   -h, --help
 
 sqldef-options cannot have --dry-run, --file, --skip-drop, etc.
